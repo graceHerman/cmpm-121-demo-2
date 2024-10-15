@@ -19,66 +19,60 @@ canvas.height = 256;
 
 app.appendChild(canvas);
 
-// Make clear button
+// Create a container for the buttons
+const buttonContainer = document.createElement('div');
+buttonContainer.classList.add('button-container');
+
+// Create clear, undo, and redo buttons
 const clearButton = document.createElement('button');
 clearButton.textContent = "Clear";
-app.appendChild(clearButton);
 
-// Make undo button
 const undoButton = document.createElement('button');
 undoButton.textContent = "Undo";
-app.appendChild(undoButton);
 
-// Make redo button
 const redoButton = document.createElement('button');
 redoButton.textContent = "Redo";
-app.appendChild(redoButton);
+
+// Append buttons to the container
+buttonContainer.appendChild(clearButton);
+buttonContainer.appendChild(undoButton);
+buttonContainer.appendChild(redoButton);
+
+// Add the button container to the app
+app.appendChild(buttonContainer);
 
 // Get the 2D drawing context
 const context = canvas.getContext("2d")!;
-if (context === null) {
+if (!context) {
     throw new Error("Failed to get canvas context");
 }
 
-// Store lines (array of arrays of points) and a redo stack
-const lines: Array<Array<{ x: number, y: number }>> = [];
-let currentLine: Array<{ x: number, y: number }> = [];
-let redoStack: Array<Array<{ x: number, y: number }>> = [];
+// Store lines (array of MarkerLine objects) and a redo stack
+const lines: MarkerLine[] = [];
+let currentLine: MarkerLine | null = null;
+let redoStack: MarkerLine[] = [];
 let isDrawing = false;
-let x = 0;
-let y = 0;
 
 // Add the event listeners for mouse events
 canvas.addEventListener("mousedown", (e) => {
     isDrawing = true;
-    x = e.offsetX;
-    y = e.offsetY;
-    currentLine = [];
+    currentLine = new MarkerLine(e.offsetX, e.offsetY);
     lines.push(currentLine);  // Start a new line
-    addPoint(x, y);
 });
 
 canvas.addEventListener("mousemove", (e) => {
-    if (isDrawing) {
-        addPoint(e.offsetX, e.offsetY);
-        x = e.offsetX;
-        y = e.offsetY;
+    if (isDrawing && currentLine) {
+        currentLine.drag(e.offsetX, e.offsetY);
+        canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     }
 });
 
 window.addEventListener("mouseup", () => {
-    if (isDrawing) {
-        addPoint(x, y); // Ensure the last point is saved
+    if (isDrawing && currentLine) {
         isDrawing = false;
+        currentLine = null;
     }
 });
-
-// Add a point to the current line and dispatch "drawing-changed" event
-function addPoint(x: number, y: number) {
-    currentLine.push({ x, y });
-    const event = new CustomEvent("drawing-changed");
-    canvas.dispatchEvent(event);
-}
 
 // Observer for "drawing-changed" event to redraw the canvas
 canvas.addEventListener("drawing-changed", () => {
@@ -88,24 +82,7 @@ canvas.addEventListener("drawing-changed", () => {
 // Redraw all lines on the canvas
 function redrawCanvas() {
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    lines.forEach((line) => {
-        if (line.length > 1) {
-            context.beginPath();
-            for (let i = 0; i < line.length - 1; i++) {
-                const startPoint = line[i];
-                const endPoint = line[i + 1];
-                drawLine(context, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-            }
-            context.stroke();
-            context.closePath();
-        }
-    });
-}
-
-// Draw a line between two points
-function drawLine(context: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
+    lines.forEach(line => line.display(context)); // Display each line
 }
 
 // Clear the canvas and reset all lines when the clear button is clicked
@@ -116,7 +93,7 @@ clearButton.addEventListener("click", () => {
     canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
 });
 
-// Undo button fundtion
+// Undo functionality
 undoButton.addEventListener("click", () => {
     if (lines.length > 0) {
         const lastLine = lines.pop(); // Remove the last line
@@ -127,7 +104,7 @@ undoButton.addEventListener("click", () => {
     }
 });
 
-// Redo button function
+// Redo functionality
 redoButton.addEventListener("click", () => {
     if (redoStack.length > 0) {
         const restoredLine = redoStack.pop(); // Take the last item from the redo stack
@@ -137,5 +114,32 @@ redoButton.addEventListener("click", () => {
         canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
     }
 });
+
+// Create class that will be used to represent mark lines 
+class MarkerLine {
+    points: Array<{ x: number, y: number }>;
+
+    constructor(initialX: number, initialY: number) {
+        this.points = [{ x: initialX, y: initialY }];
+    }
+
+    // Add a new point as the user drags the mouse
+    drag(x: number, y: number) {
+        this.points.push({ x, y });
+    }
+
+    // Display the line on the canvas context
+    display(ctx: CanvasRenderingContext2D) {
+        if (this.points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(this.points[0].x, this.points[0].y);
+            for (let i = 1; i < this.points.length; i++) {
+                ctx.lineTo(this.points[i].x, this.points[i].y);
+            }
+            ctx.stroke();
+            ctx.closePath();
+        }
+    }
+}
 
 // File Path: '/Users/gracelilanhermangmail.com/Desktop/Fall 2024/121/cmpm-121-demo-2'
