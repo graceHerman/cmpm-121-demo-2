@@ -19,22 +19,31 @@ canvas.height = 256;
 
 app.appendChild(canvas);
 
-// Make clear buttton to clear drawing
+// Make clear button
 const clearButton = document.createElement('button');
 clearButton.textContent = "Clear";
-
 app.appendChild(clearButton);
 
-// Make it so that person can draw
+// Make undo button
+const undoButton = document.createElement('button');
+undoButton.textContent = "Undo";
+app.appendChild(undoButton);
+
+// Make redo button
+const redoButton = document.createElement('button');
+redoButton.textContent = "Redo";
+app.appendChild(redoButton);
+
 // Get the 2D drawing context
 const context = canvas.getContext("2d")!;
 if (context === null) {
-    throw new Error("Failed to get 2D context for the canvas.");
+    throw new Error("Failed to get canvas context");
 }
 
-// Store lines (array of arrays of points)
+// Store lines (array of arrays of points) and a redo stack
 const lines: Array<Array<{ x: number, y: number }>> = [];
 let currentLine: Array<{ x: number, y: number }> = [];
+let redoStack: Array<Array<{ x: number, y: number }>> = [];
 let isDrawing = false;
 let x = 0;
 let y = 0;
@@ -44,9 +53,9 @@ canvas.addEventListener("mousedown", (e) => {
     isDrawing = true;
     x = e.offsetX;
     y = e.offsetY;
-    currentLine = []; // Create a new line
-    lines.push(currentLine); // Add it to the lines array
-    addPoint(x, y); // Add the starting point
+    currentLine = [];
+    lines.push(currentLine);  // Start a new line
+    addPoint(x, y);
 });
 
 canvas.addEventListener("mousemove", (e) => {
@@ -79,8 +88,6 @@ canvas.addEventListener("drawing-changed", () => {
 // Redraw all lines on the canvas
 function redrawCanvas() {
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-
-    // Redraw each line
     lines.forEach((line) => {
         if (line.length > 1) {
             context.beginPath();
@@ -105,5 +112,30 @@ function drawLine(context: CanvasRenderingContext2D, x1: number, y1: number, x2:
 clearButton.addEventListener("click", () => {
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
     lines.length = 0; // Reset the array of lines
+    redoStack.length = 0; // Clear the redo stack
+    canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
 });
+
+// Undo button fundtion
+undoButton.addEventListener("click", () => {
+    if (lines.length > 0) {
+        const lastLine = lines.pop(); // Remove the last line
+        if (lastLine) {
+            redoStack.push(lastLine); // Add the removed line to the redo stack
+        }
+        canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+    }
+});
+
+// Redo button function
+redoButton.addEventListener("click", () => {
+    if (redoStack.length > 0) {
+        const restoredLine = redoStack.pop(); // Take the last item from the redo stack
+        if (restoredLine) {
+            lines.push(restoredLine); // Restore the line
+        }
+        canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+    }
+});
+
 // File Path: '/Users/gracelilanhermangmail.com/Desktop/Fall 2024/121/cmpm-121-demo-2'
