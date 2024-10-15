@@ -27,26 +27,31 @@ app.appendChild(clearButton);
 
 // Make it so that person can draw
 // Get the 2D drawing context
-const context = canvas.getContext("2d");
-if (!context) {
-    throw new Error("Failed to get canvas context");
+const context = canvas.getContext("2d")!;
+if (context === null) {
+    throw new Error("Failed to get 2D context for the canvas.");
 }
 
-// Variables to track drawing state
+// Store lines (array of arrays of points)
+const lines: Array<Array<{ x: number, y: number }>> = [];
+let currentLine: Array<{ x: number, y: number }> = [];
 let isDrawing = false;
 let x = 0;
 let y = 0;
 
 // Add the event listeners for mouse events
 canvas.addEventListener("mousedown", (e) => {
+    isDrawing = true;
     x = e.offsetX;
     y = e.offsetY;
-    isDrawing = true;
+    currentLine = []; // Create a new line
+    lines.push(currentLine); // Add it to the lines array
+    addPoint(x, y); // Add the starting point
 });
 
 canvas.addEventListener("mousemove", (e) => {
     if (isDrawing) {
-        drawLine(context, x, y, e.offsetX, e.offsetY);
+        addPoint(e.offsetX, e.offsetY);
         x = e.offsetX;
         y = e.offsetY;
     }
@@ -54,24 +59,51 @@ canvas.addEventListener("mousemove", (e) => {
 
 window.addEventListener("mouseup", () => {
     if (isDrawing) {
-        drawLine(context, x, y, x, y); // Draw the last segment
+        addPoint(x, y); // Ensure the last point is saved
         isDrawing = false;
     }
 });
 
-function drawLine(context: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
-    context.beginPath();
-    context.strokeStyle = "black";
-    context.lineWidth = 1;
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
-    context.stroke();
-    context.closePath();
+// Add a point to the current line and dispatch "drawing-changed" event
+function addPoint(x: number, y: number) {
+    currentLine.push({ x, y });
+    const event = new CustomEvent("drawing-changed");
+    canvas.dispatchEvent(event);
 }
 
-// Clear the canvas when the clear button is clicked
-clearButton.addEventListener("click", () => {
-    context.clearRect(0, 0, canvas.width, canvas.height); // Clear the entire canvas
+// Observer for "drawing-changed" event to redraw the canvas
+canvas.addEventListener("drawing-changed", () => {
+    redrawCanvas();
 });
 
+// Redraw all lines on the canvas
+function redrawCanvas() {
+    context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+    // Redraw each line
+    lines.forEach((line) => {
+        if (line.length > 1) {
+            context.beginPath();
+            for (let i = 0; i < line.length - 1; i++) {
+                const startPoint = line[i];
+                const endPoint = line[i + 1];
+                drawLine(context, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+            }
+            context.stroke();
+            context.closePath();
+        }
+    });
+}
+
+// Draw a line between two points
+function drawLine(context: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+}
+
+// Clear the canvas and reset all lines when the clear button is clicked
+clearButton.addEventListener("click", () => {
+    context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+    lines.length = 0; // Reset the array of lines
+});
 // File Path: '/Users/gracelilanhermangmail.com/Desktop/Fall 2024/121/cmpm-121-demo-2'
