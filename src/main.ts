@@ -6,7 +6,6 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 document.title = APP_NAME;
 app.innerHTML = APP_NAME;
 
-// My edits
 // Make an app title
 const title = document.createElement('h1');
 title.textContent = APP_NAME;
@@ -23,7 +22,7 @@ app.appendChild(canvas);
 const buttonContainer = document.createElement('div');
 buttonContainer.classList.add('button-container');
 
-// Create clear, undo, and redo buttons
+// Create clear, undo, redo buttons
 const clearButton = document.createElement('button');
 clearButton.textContent = "Clear";
 
@@ -58,17 +57,14 @@ if (!context) {
 
 // Marker tool state (default to thin)
 let markerThickness = 1;
+let toolPreview: ToolPreview | null = null;  // To track the tool preview
 
 // Set the selected tool with visual feedback
 function selectTool(button: HTMLButtonElement, thickness: number) {
-    // Remove 'selectedTool' class from all tool buttons
     thinButton.classList.remove('selectedTool');
     thickButton.classList.remove('selectedTool');
     
-    // Add 'selectedTool' class to the clicked button
     button.classList.add('selectedTool');
-    
-    // Update the marker thickness
     markerThickness = thickness;
 }
 
@@ -89,13 +85,19 @@ let isDrawing = false;
 canvas.addEventListener("mousedown", (e) => {
     isDrawing = true;
     currentLine = new MarkerLine(e.offsetX, e.offsetY, markerThickness);
-    lines.push(currentLine);  // Start a new line
+    lines.push(currentLine);
+    toolPreview = null;  // Hide the preview while drawing
+    canvas.dispatchEvent(new CustomEvent("drawing-changed"));
 });
 
 canvas.addEventListener("mousemove", (e) => {
     if (isDrawing && currentLine) {
         currentLine.drag(e.offsetX, e.offsetY);
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
+    } else {
+        // Update tool preview while not drawing
+        toolPreview = new ToolPreview(e.offsetX, e.offsetY, markerThickness);
+        canvas.dispatchEvent(new CustomEvent("tool-moved"));
     }
 });
 
@@ -103,6 +105,7 @@ window.addEventListener("mouseup", () => {
     if (isDrawing && currentLine) {
         isDrawing = false;
         currentLine = null;
+        canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     }
 });
 
@@ -111,39 +114,48 @@ canvas.addEventListener("drawing-changed", () => {
     redrawCanvas();
 });
 
-// Redraw all lines on the canvas
+// Observer for "tool-moved" event to redraw the canvas including the tool preview
+canvas.addEventListener("tool-moved", () => {
+    redrawCanvas();
+});
+
+// Redraw all lines and the tool preview on the canvas
 function redrawCanvas() {
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    lines.forEach(line => line.display(context)); // Display each line
+    lines.forEach(line => line.display(context));  // Display each line
+    
+    if (!isDrawing && toolPreview) {
+        toolPreview.draw(context);  // Draw tool preview only when not drawing
+    }
 }
 
 // Clear the canvas and reset all lines when the clear button is clicked
 clearButton.addEventListener("click", () => {
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    lines.length = 0; // Reset the array of lines
-    redoStack.length = 0; // Clear the redo stack
-    canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+    lines.length = 0;  // Reset the array of lines
+    redoStack.length = 0;  // Clear the redo stack
+    canvas.dispatchEvent(new CustomEvent("drawing-changed"));  // Trigger redraw
 });
 
 // Undo functionality
 undoButton.addEventListener("click", () => {
     if (lines.length > 0) {
-        const lastLine = lines.pop(); // Remove the last line
+        const lastLine = lines.pop();  // Remove the last line
         if (lastLine) {
-            redoStack.push(lastLine); // Add the removed line to the redo stack
+            redoStack.push(lastLine);  // Add the removed line to the redo stack
         }
-        canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+        canvas.dispatchEvent(new CustomEvent("drawing-changed"));  // Trigger redraw
     }
 });
 
 // Redo functionality
 redoButton.addEventListener("click", () => {
     if (redoStack.length > 0) {
-        const restoredLine = redoStack.pop(); // Take the last item from the redo stack
+        const restoredLine = redoStack.pop();  // Take the last item from the redo stack
         if (restoredLine) {
-            lines.push(restoredLine); // Restore the line
+            lines.push(restoredLine);  // Restore the line
         }
-        canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+        canvas.dispatchEvent(new CustomEvent("drawing-changed"));  // Trigger redraw
     }
 });
 
@@ -166,7 +178,7 @@ class MarkerLine {
     display(ctx: CanvasRenderingContext2D) {
         if (this.points.length > 1) {
             ctx.beginPath();
-            ctx.lineWidth = this.thickness; // Set the line thickness
+            ctx.lineWidth = this.thickness;  // Set the line thickness
             ctx.moveTo(this.points[0].x, this.points[0].y);
             for (let i = 1; i < this.points.length; i++) {
                 ctx.lineTo(this.points[i].x, this.points[i].y);
@@ -174,6 +186,29 @@ class MarkerLine {
             ctx.stroke();
             ctx.closePath();
         }
+    }
+}
+
+// Class for the tool preview
+class ToolPreview {
+    x: number;
+    y: number;
+    thickness: number;
+
+    constructor(x: number, y: number, thickness: number) {
+        this.x = x;
+        this.y = y;
+        this.thickness = thickness;
+    }
+
+    // Draw a circle at the current mouse position representing the tool size
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.thickness / 2, 0, 2 * Math.PI);
+        ctx.lineWidth = 1;  // Draw the preview with a thin line
+        ctx.strokeStyle = "gray";  // Use a gray color for the preview
+        ctx.stroke();
+        ctx.closePath();
     }
 }
 
