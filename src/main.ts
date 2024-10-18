@@ -21,31 +21,13 @@ app.appendChild(canvas);
 const buttonContainer = document.createElement('div');
 buttonContainer.classList.add('button-container');
 
-// Create tool and sticker buttons
+// Create tool buttons
 const thinButton = document.createElement('button');
 thinButton.textContent = "Thin Marker";
 const thickButton = document.createElement('button');
 thickButton.textContent = "Thick Marker";
 
-// Sticker data defined in JSON-like structure
-const stickersData = [
-    { emoji: "🐱" },
-    { emoji: "🌟" },
-    { emoji: "🫠" }
-];
-
-// Create buttons for predefined stickers
-const stickerButtons: HTMLButtonElement[] = stickersData.map(sticker => {
-    const button = document.createElement('button');
-    button.textContent = sticker.emoji;
-    button.addEventListener('click', () => {
-        selectedEmoji = sticker.emoji;
-        toolPreview = null;
-    });
-    return button;
-});
-
-// Create clear, undo, and redo buttons
+// Create clear, undo, redo, and export buttons
 const clearButton = document.createElement('button');
 clearButton.textContent = "Clear";
 const undoButton = document.createElement('button');
@@ -53,25 +35,36 @@ undoButton.textContent = "Undo";
 const redoButton = document.createElement('button');
 redoButton.textContent = "Redo";
 
-// Add button for creating custom sticker
+// Create a button for creating a custom sticker
 const customStickerButton = document.createElement('button');
 customStickerButton.textContent = "Add Custom Sticker";
-customStickerButton.addEventListener('click', () => {
-    const newSticker = prompt("Custom sticker text:", "✨");
-    if (newSticker) {
-        stickersData.push({ emoji: newSticker }); // Add new sticker to the array
-        const newButton = document.createElement('button');
-        newButton.textContent = newSticker;
-        newButton.addEventListener('click', () => {
-            selectedEmoji = newSticker;
-            toolPreview = null;
+
+// Define the initial set of stickers
+const stickersData: string[] = ["🐱", "🌟", "🫠"];
+let selectedEmoji = "";
+let toolPreview: { draw: (ctx: CanvasRenderingContext2D) => void } | null = null;
+
+// Create dynamic sticker buttons based on stickersData
+function createStickerButtons() {
+    // Clear existing buttons first
+    const existingButtons = document.querySelectorAll('.sticker-button');
+    existingButtons.forEach(button => button.remove());
+
+    // Create buttons for each sticker
+    stickersData.forEach(emoji => {
+        const emojiButton = document.createElement('button');
+        emojiButton.textContent = emoji;
+        emojiButton.classList.add('sticker-button');
+        emojiButton.addEventListener("click", () => {
+            selectedEmoji = emoji;
+            toolPreview = null; // Clear the tool preview
         });
-        buttonContainer.appendChild(newButton); // Add the new button to the container
-    }
-});
+        buttonContainer.appendChild(emojiButton);
+    });
+}
 
 // Append buttons to the container
-buttonContainer.append(thinButton, thickButton, ...stickerButtons, clearButton, undoButton, redoButton, customStickerButton);
+buttonContainer.append(thinButton, thickButton, clearButton, undoButton, redoButton, customStickerButton);
 app.appendChild(buttonContainer);
 
 // Get the 2D drawing context
@@ -84,10 +77,8 @@ if (!context) {
 const lines: any[] = [];
 let currentLine: MarkerLine | null = null;
 let redoStack: any[] = [];
-let toolPreview: { draw: (ctx: CanvasRenderingContext2D) => void } | null = null;
 let isDrawing = false;
 let selectedThickness = 1;
-let selectedEmoji = "";
 
 // Add the event listeners for mouse events
 canvas.addEventListener("mousedown", (e) => {
@@ -107,7 +98,7 @@ canvas.addEventListener("mousemove", (e) => {
         currentLine.drag(e.offsetX, e.offsetY);
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     } else {
-        // Handle the tool preview
+        // Handle the tool preview if the user is not drawing
         toolPreview = selectedEmoji
             ? new StickerPreview(e.offsetX, e.offsetY, selectedEmoji)
             : new MarkerToolPreview(e.offsetX, e.offsetY, selectedThickness);
@@ -127,7 +118,7 @@ canvas.addEventListener("drawing-changed", () => {
     redrawCanvas();
 });
 
-// Redraw tool preview when the mouse moves
+// Redraw tool preview when the mouse moves (tool-moved event)
 canvas.addEventListener("tool-moved", () => {
     redrawCanvas();
     if (toolPreview && 'draw' in toolPreview) {
@@ -169,6 +160,35 @@ redoButton.addEventListener("click", () => {
         }
         canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
     }
+});
+
+// Export functionality
+const exportButton = document.createElement('button');
+exportButton.textContent = "Export as PNG";
+buttonContainer.appendChild(exportButton); // Append to button container
+
+exportButton.addEventListener("click", () => {
+    // Create a new canvas and context for exporting
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1024;
+    exportCanvas.height = 1024;
+    const exportContext = exportCanvas.getContext("2d")!;
+
+    if (!exportContext) {
+        throw new Error("Failed to get export canvas context");
+    }
+
+    // Scale the context for the larger canvas (4x in both dimensions)
+    exportContext.scale(4, 4);
+
+    // Redraw all existing lines on the new canvas
+    lines.forEach(line => line.display(exportContext));
+
+    // Trigger a file download
+    const link = document.createElement('a');
+    link.href = exportCanvas.toDataURL("image/png");
+    link.download = "drawing.png"; // Name for the downloaded file
+    link.click(); // Programmatically click the link to trigger download
 });
 
 // Marker and Sticker tool classes
@@ -276,6 +296,18 @@ thickButton.addEventListener("click", () => {
     selectedEmoji = "";
     toolPreview = null;
 });
+
+// Add custom sticker functionality
+customStickerButton.addEventListener("click", () => {
+    const newSticker = prompt("Enter a new sticker emoji:", "✨");
+    if (newSticker) {
+        stickersData.push(newSticker); // Add new sticker to the data array
+        createStickerButtons(); // Recreate sticker buttons
+    }
+});
+
+// Initialize sticker buttons
+createStickerButtons();
 
 
 // File Path: '/Users/gracelilanhermangmail.com/Desktop/Fall 2024/121/cmpm-121-demo-2'
