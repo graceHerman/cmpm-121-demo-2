@@ -27,12 +27,23 @@ thinButton.textContent = "Thin Marker";
 const thickButton = document.createElement('button');
 thickButton.textContent = "Thick Marker";
 
-const emoji1Button = document.createElement('button');
-emoji1Button.textContent = "🐱";
-const emoji2Button = document.createElement('button');
-emoji2Button.textContent = "🌟";
-const emoji3Button = document.createElement('button');
-emoji3Button.textContent = "🫠";
+// Sticker data defined in JSON-like structure
+const stickersData = [
+    { emoji: "🐱" },
+    { emoji: "🌟" },
+    { emoji: "🫠" }
+];
+
+// Create buttons for predefined stickers
+const stickerButtons: HTMLButtonElement[] = stickersData.map(sticker => {
+    const button = document.createElement('button');
+    button.textContent = sticker.emoji;
+    button.addEventListener('click', () => {
+        selectedEmoji = sticker.emoji;
+        toolPreview = null;
+    });
+    return button;
+});
 
 // Create clear, undo, and redo buttons
 const clearButton = document.createElement('button');
@@ -42,8 +53,25 @@ undoButton.textContent = "Undo";
 const redoButton = document.createElement('button');
 redoButton.textContent = "Redo";
 
+// Add button for creating custom sticker
+const customStickerButton = document.createElement('button');
+customStickerButton.textContent = "Add Custom Sticker";
+customStickerButton.addEventListener('click', () => {
+    const newSticker = prompt("Custom sticker text:", "✨");
+    if (newSticker) {
+        stickersData.push({ emoji: newSticker }); // Add new sticker to the array
+        const newButton = document.createElement('button');
+        newButton.textContent = newSticker;
+        newButton.addEventListener('click', () => {
+            selectedEmoji = newSticker;
+            toolPreview = null;
+        });
+        buttonContainer.appendChild(newButton); // Add the new button to the container
+    }
+});
+
 // Append buttons to the container
-buttonContainer.append(thinButton, thickButton, emoji1Button, emoji2Button, emoji3Button, clearButton, undoButton, redoButton);
+buttonContainer.append(thinButton, thickButton, ...stickerButtons, clearButton, undoButton, redoButton, customStickerButton);
 app.appendChild(buttonContainer);
 
 // Get the 2D drawing context
@@ -64,7 +92,7 @@ let selectedEmoji = "";
 // Add the event listeners for mouse events
 canvas.addEventListener("mousedown", (e) => {
     if (selectedEmoji) {
-        // User selected a sticker, not a marker
+        // User selected a sticker
         currentLine = new StickerCommand(e.offsetX, e.offsetY, selectedEmoji);
     } else {
         // Marker tool selected
@@ -79,7 +107,7 @@ canvas.addEventListener("mousemove", (e) => {
         currentLine.drag(e.offsetX, e.offsetY);
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     } else {
-        // Handle the tool preview if the user is not drawing
+        // Handle the tool preview
         toolPreview = selectedEmoji
             ? new StickerPreview(e.offsetX, e.offsetY, selectedEmoji)
             : new MarkerToolPreview(e.offsetX, e.offsetY, selectedThickness);
@@ -99,7 +127,7 @@ canvas.addEventListener("drawing-changed", () => {
     redrawCanvas();
 });
 
-// Redraw tool preview when the mouse moves (tool-moved event)
+// Redraw tool preview when the mouse moves
 canvas.addEventListener("tool-moved", () => {
     redrawCanvas();
     if (toolPreview && 'draw' in toolPreview) {
@@ -246,21 +274,6 @@ thinButton.addEventListener("click", () => {
 thickButton.addEventListener("click", () => {
     selectedThickness = 10;
     selectedEmoji = "";
-    toolPreview = null;
-});
-
-emoji1Button.addEventListener("click", () => {
-    selectedEmoji = "🐱";
-    toolPreview = null;
-});
-
-emoji2Button.addEventListener("click", () => {
-    selectedEmoji = "🌟";
-    toolPreview = null;
-});
-
-emoji3Button.addEventListener("click", () => {
-    selectedEmoji = "🫠";
     toolPreview = null;
 });
 
