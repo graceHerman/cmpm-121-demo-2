@@ -39,10 +39,17 @@ redoButton.textContent = "Redo";
 const customStickerButton = document.createElement('button');
 customStickerButton.textContent = "Add Custom Sticker";
 
+// Create a color picker
+const colorPicker = document.createElement('input');
+colorPicker.type = 'color';
+colorPicker.value = '#000000'; // Default color
+
 // Define the initial set of stickers
 const stickersData: string[] = ["🐱", "🌟", "🫠"];
 let selectedEmoji = "";
 let toolPreview: { draw: (ctx: CanvasRenderingContext2D) => void } | null = null;
+let selectedColor = colorPicker.value; // Initialize with the color picker value
+let selectedRotation = 0; // Initialize rotation
 
 // Create dynamic sticker buttons based on stickersData
 function createStickerButtons() {
@@ -57,14 +64,15 @@ function createStickerButtons() {
         emojiButton.classList.add('sticker-button');
         emojiButton.addEventListener("click", () => {
             selectedEmoji = emoji;
+            selectedRotation = randomRotation(); // Randomize rotation
             toolPreview = null; // Clear the tool preview
         });
         buttonContainer.appendChild(emojiButton);
     });
 }
 
-// Append buttons to the container
-buttonContainer.append(thinButton, thickButton, clearButton, undoButton, redoButton, customStickerButton);
+// Append buttons and color picker to the container
+buttonContainer.append(thinButton, thickButton, clearButton, undoButton, redoButton, customStickerButton, colorPicker);
 app.appendChild(buttonContainer);
 
 // Get the 2D drawing context
@@ -84,10 +92,10 @@ let selectedThickness = 1;
 canvas.addEventListener("mousedown", (e) => {
     if (selectedEmoji) {
         // User selected a sticker
-        currentLine = new StickerCommand(e.offsetX, e.offsetY, selectedEmoji);
+        currentLine = new StickerCommand(e.offsetX, e.offsetY, selectedEmoji, selectedRotation, selectedColor);
     } else {
         // Marker tool selected
-        currentLine = new MarkerLine(e.offsetX, e.offsetY, selectedThickness);
+        currentLine = new MarkerLine(e.offsetX, e.offsetY, selectedThickness, selectedColor);
     }
     lines.push(currentLine);
     isDrawing = true;
@@ -100,8 +108,8 @@ canvas.addEventListener("mousemove", (e) => {
     } else {
         // Handle the tool preview if the user is not drawing
         toolPreview = selectedEmoji
-            ? new StickerPreview(e.offsetX, e.offsetY, selectedEmoji)
-            : new MarkerToolPreview(e.offsetX, e.offsetY, selectedThickness);
+            ? new StickerPreview(e.offsetX, e.offsetY, selectedEmoji, selectedRotation)
+            : new MarkerToolPreview(e.offsetX, e.offsetY, selectedThickness, selectedColor);
         canvas.dispatchEvent(new CustomEvent("tool-moved"));
     }
 });
@@ -191,14 +199,30 @@ exportButton.addEventListener("click", () => {
     link.click(); // Programmatically click the link to trigger download
 });
 
+// Utility functions
+function randomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
+function randomRotation() {
+    return Math.floor(Math.random() * 360); // Random rotation between 0 and 360 degrees
+}
+
 // Marker and Sticker tool classes
 class MarkerLine {
     points: Array<{ x: number, y: number }>;
     thickness: number;
+    color: string;
 
-    constructor(initialX: number, initialY: number, thickness: number) {
+    constructor(initialX: number, initialY: number, thickness: number, color: string) {
         this.points = [{ x: initialX, y: initialY }];
         this.thickness = thickness;
+        this.color = color;
     }
 
     drag(x: number, y: number) {
@@ -208,6 +232,7 @@ class MarkerLine {
     display(ctx: CanvasRenderingContext2D) {
         if (this.points.length > 1) {
             ctx.lineWidth = this.thickness;
+            ctx.strokeStyle = this.color; // Use the selected color
             ctx.beginPath();
             ctx.moveTo(this.points[0].x, this.points[0].y);
             for (let i = 1; i < this.points.length; i++) {
@@ -219,80 +244,99 @@ class MarkerLine {
     }
 }
 
-// Sticker tool
+// Sticker tool class
 class StickerCommand {
     x: number;
     y: number;
     emoji: string;
+    rotation: number;
+    color: string;
 
-    constructor(x: number, y: number, emoji: string) {
+    constructor(x: number, y: number, emoji: string, rotation: number, color: string) {
         this.x = x;
         this.y = y;
         this.emoji = emoji;
-    }
-
-    drag(x: number, y: number) {
-        this.x = x;
-        this.y = y;
+        this.rotation = rotation;
+        this.color = color;
     }
 
     display(ctx: CanvasRenderingContext2D) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation * Math.PI / 180); // Convert degrees to radians
+        ctx.fillStyle = this.color; // Use the selected color
         ctx.font = "30px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(this.emoji, this.x, this.y);
+        ctx.fillText(this.emoji, 0, 0);
+        ctx.restore();
     }
 }
 
-// Tool preview classes
+// Marker tool preview class
 class MarkerToolPreview {
     x: number;
     y: number;
     thickness: number;
+    color: string;
 
-    constructor(x: number, y: number, thickness: number) {
+    constructor(x: number, y: number, thickness: number, color: string) {
         this.x = x;
         this.y = y;
         this.thickness = thickness;
+        this.color = color;
     }
 
     draw(ctx: CanvasRenderingContext2D) {
-        ctx.lineWidth = 1;
+        ctx.lineWidth = this.thickness;
+        ctx.strokeStyle = this.color; // Use the selected color
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.thickness / 2, 0, 2 * Math.PI);
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + 10, this.y + 10); // Simple line preview
         ctx.stroke();
         ctx.closePath();
     }
 }
 
+// Sticker preview class
 class StickerPreview {
     x: number;
     y: number;
     emoji: string;
+    rotation: number;
 
-    constructor(x: number, y: number, emoji: string) {
+    constructor(x: number, y: number, emoji: string, rotation: number) {
         this.x = x;
         this.y = y;
         this.emoji = emoji;
+        this.rotation = rotation;
     }
 
     draw(ctx: CanvasRenderingContext2D) {
+        ctx.save(); // Save the current context state
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation * Math.PI / 180); // Rotate the emoji
         ctx.font = "30px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(this.emoji, this.x, this.y);
+        ctx.fillText(this.emoji, 0, 0);
+        ctx.restore(); // Restore the context state
     }
 }
 
 // Tool selection logic
 thinButton.addEventListener("click", () => {
     selectedThickness = 1;
+    selectedColor = colorPicker.value; // Use the selected color
+    selectedRotation = randomRotation(); // Randomize rotation
     selectedEmoji = "";
     toolPreview = null;
 });
 
 thickButton.addEventListener("click", () => {
     selectedThickness = 5;
+    selectedColor = colorPicker.value; // Use the selected color
+    selectedRotation = randomRotation(); // Randomize rotation
     selectedEmoji = "";
     toolPreview = null;
 });
@@ -308,5 +352,6 @@ customStickerButton.addEventListener("click", () => {
 
 // Initialize sticker buttons
 createStickerButtons();
+
 
 // File Path: '/Users/gracelilanhermangmail.com/Desktop/Fall 2024/121/cmpm-121-demo-2'
