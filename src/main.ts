@@ -23,9 +23,9 @@ buttonContainer.classList.add('button-container');
 
 // Create tool buttons
 const thinButton = document.createElement('button');
-thinButton.textContent = "Thin Marker";
+thinButton.textContent = "Thin Brush";
 const thickButton = document.createElement('button');
-thickButton.textContent = "Thick Marker";
+thickButton.textContent = "Thick Brush";
 
 // Create clear, undo, redo, and export buttons
 const clearButton = document.createElement('button');
@@ -237,7 +237,7 @@ class StickerCommand {
     }
 
     display(ctx: CanvasRenderingContext2D) {
-        ctx.font = "40px Arial";
+        ctx.font = "30px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(this.emoji, this.x, this.y);
@@ -277,7 +277,7 @@ class StickerPreview {
     }
 
     draw(ctx: CanvasRenderingContext2D) {
-        ctx.font = "40px Arial";
+        ctx.font = "30px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(this.emoji, this.x, this.y);
@@ -292,7 +292,7 @@ thinButton.addEventListener("click", () => {
 });
 
 thickButton.addEventListener("click", () => {
-    selectedThickness = 10;
+    selectedThickness = 5;
     selectedEmoji = "";
     toolPreview = null;
 });
@@ -308,6 +308,5 @@ customStickerButton.addEventListener("click", () => {
 
 // Initialize sticker buttons
 createStickerButtons();
-
 
 // File Path: '/Users/gracelilanhermangmail.com/Desktop/Fall 2024/121/cmpm-121-demo-2'
