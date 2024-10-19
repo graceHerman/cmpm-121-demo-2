@@ -142,20 +142,20 @@ function redrawCanvas() {
 
 // Clear the canvas and reset all lines when the clear button is clicked
 clearButton.addEventListener("click", () => {
-    context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+    context.clearRect(0, 0, canvas.width, canvas.height); 
     lines.length = 0; // Reset the array of lines
     redoStack.length = 0; // Clear the redo stack
     canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
 });
 
-// Undo functionality
+// Undo button functionality
 undoButton.addEventListener("click", () => {
     if (lines.length > 0) {
         const lastLine = lines.pop(); // Remove the last line
         if (lastLine) {
             redoStack.push(lastLine); // Add the removed line to the redo stack
         }
-        canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+        canvas.dispatchEvent(new CustomEvent("drawing-changed")); 
     }
 });
 
@@ -166,7 +166,7 @@ redoButton.addEventListener("click", () => {
         if (restoredLine) {
             lines.push(restoredLine); // Restore the line
         }
-        canvas.dispatchEvent(new CustomEvent("drawing-changed")); // Trigger redraw
+        canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     }
 });
 
@@ -244,7 +244,7 @@ class MarkerLine {
     }
 }
 
-// Sticker tool class
+// Sticker tool: the emoji sticker 
 class StickerCommand {
     x: number;
     y: number;
@@ -264,7 +264,7 @@ class StickerCommand {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation * Math.PI / 180); // Convert degrees to radians
-        ctx.fillStyle = this.color; // Use the selected color
+        ctx.fillStyle = this.color;
         ctx.font = "30px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -273,7 +273,7 @@ class StickerCommand {
     }
 }
 
-// Marker tool preview class
+// Marker tool preview: dimensions for thin marker and thick marker 
 class MarkerToolPreview {
     x: number;
     y: number;
@@ -289,7 +289,7 @@ class MarkerToolPreview {
 
     draw(ctx: CanvasRenderingContext2D) {
         ctx.lineWidth = this.thickness;
-        ctx.strokeStyle = this.color; // Use the selected color
+        ctx.strokeStyle = this.color; 
         ctx.beginPath();
         ctx.moveTo(this.x, this.y);
         ctx.lineTo(this.x + 10, this.y + 10); // Simple line preview
@@ -298,7 +298,7 @@ class MarkerToolPreview {
     }
 }
 
-// Sticker preview class
+// Sticker preview: dimentions for emoji stickers
 class StickerPreview {
     x: number;
     y: number;
@@ -324,10 +324,10 @@ class StickerPreview {
     }
 }
 
-// Tool selection logic
+// Tool selection: thin marker, thick marker, and sticker buttons 
 thinButton.addEventListener("click", () => {
     selectedThickness = 1;
-    selectedColor = colorPicker.value; // Use the selected color
+    selectedColor = colorPicker.value; // selected color
     selectedRotation = randomRotation(); // Randomize rotation
     selectedEmoji = "";
     toolPreview = null;
@@ -335,7 +335,7 @@ thinButton.addEventListener("click", () => {
 
 thickButton.addEventListener("click", () => {
     selectedThickness = 5;
-    selectedColor = colorPicker.value; // Use the selected color
+    selectedColor = colorPicker.value; // selected color
     selectedRotation = randomRotation(); // Randomize rotation
     selectedEmoji = "";
     toolPreview = null;
