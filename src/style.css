@@ -5,7 +5,7 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #f0d58a;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -35,17 +35,19 @@ body {
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: 3.7em;
   line-height: 1.1;
   text-align: center;
-  color: #333;
+  color: #ffffff;
+  margin-bottom: 5px;
 }
 
 canvas {
-  border: 2px solid black;
+  border: 2px solid rgb(167, 167, 167);
   border-radius: 12px;
-  filter: drop-shadow(0 0 0.75rem rgb(0, 0, 0));
+  filter: drop-shadow(0 0 0.75rem rgb(245, 166, 76));
   background-color: white; 
+  margin-top: -50px;
 }
 
 #app {
@@ -56,8 +58,9 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   height: 100vh;
+  margin-top: -60px;
 }
 
 .logo {
@@ -87,20 +90,24 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #d4abe0;
   cursor: pointer;
   transition: border-color 0.25s;
+  width: auto;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 .button-container {
   display: flex;
   justify-content: center;
   gap: 10px; 
-  position: absolute; 
+  position: relative; 
   top: 10px;
   z-index: 10;
+  flex-wrap: wrap;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #e7e7e7;
 }
 button:focus,
 button:focus-visible {
